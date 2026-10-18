@@ -208,28 +208,55 @@ python scripts/smoke_test.py
 It signs up a throwaway user, exercises the API, prints PASS/FAIL per step and
 deletes the user at the end.
 
-## Deploy (Render)
+## Deploy (Vercel)
 
-`render.yaml` and the multi-stage `Dockerfile` are included. Stage 1 builds
-`web/` with Node and produces `web/dist`; stage 2 installs the Python deps and
-copies that `dist` in, so no frontend build happens on the host and
-`node_modules`/`dist` are never committed. Start command:
+DayLog is deployed on Vercel: [https://daylog-v1.vercel.app](https://daylog-v1.vercel.app).
 
-```
-uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips="*"
-```
+The project uses FastAPI for the backend and React + Vite for the frontend. Vercel handles deployment and provides the public URL.
 
-Set the env vars from the table above (`BASE_URL` = the public https URL,
-`SECRET_KEY`, `DATABASE_URL` = the Neon **production** branch with
-`postgresql+psycopg://` + `sslmode=require`, `GOOGLE_CLIENT_ID/SECRET`, `LLM_*`,
-`DEFAULT_TIMEZONE`). Leave `DEV_ALLOWED_ORIGINS` unset in production.
+### Environment variables
 
-## Not in v1
+Configure the required environment variables in your Vercel project under **Settings → Environment Variables**.
 
-- Email verification and password reset (both need an email service).
-- Image cards, public profiles, weekly recaps, tags, GitHub import, spaced
-  repetition.
+| Variable | Purpose |
+| --- | --- |
+| `BASE_URL` | `https://daylog-v1.vercel.app` |
+| `SECRET_KEY` | A random secret string of at least 32 characters. |
+| `DATABASE_URL` | Your Neon production PostgreSQL connection string using `postgresql+psycopg://` and `sslmode=require`. |
+| `GOOGLE_CLIENT_ID` / `GOOGLE_CLIENT_SECRET` | Google OAuth credentials. |
+| `LLM_PROVIDER` | `gemini` or `groq`. |
+| `LLM_API_KEY` | Optional shared server-side LLM API key. |
+| `LLM_MODEL` | Optional model override. |
+| `LLM_TIMEOUT_SECONDS` | LLM request timeout. |
+| `DEFAULT_TIMEZONE` | `Asia/Kolkata` by default. |
+| `DEBUG` | Keep `false` in production. |
 
-## Screenshots
+Set the environment variables required by your enabled features. Never commit `.env` or expose server-side secrets in frontend environment variables.
 
-_Add screenshots here._
+### Google OAuth
+
+In Google Cloud Console, configure the authorised redirect URI to match your deployed backend:
+
+`https://daylog-v1.vercel.app/auth/google/callback`
+
+Also configure the local callback if you use Google sign-in during local development.
+
+Update `BASE_URL` and the Google OAuth redirect URI whenever your production domain changes.
+
+### Database
+
+DayLog uses Neon PostgreSQL in production and SQLite for local development and tests. Keep development and production databases separate, and configure the production connection string in Vercel's environment variables.
+
+### Local development
+
+For local setup, testing, and frontend development, follow the Quick start and Frontend dev workflow sections above.
+
+For backend tests, run `pytest`. For frontend tests, run `cd web && npm test`.
+
+### Deployment notes
+
+- Production credentials must be configured in Vercel's environment settings.
+- Verify that API routes, database connections, authentication cookies, Google OAuth callbacks, and frontend asset serving work correctly in the deployed environment.
+- The deployment configuration must support FastAPI API routes and the built frontend. Do not assume that Render-specific Docker settings or start commands work unchanged on Vercel.
+- Run the smoke test against a running deployment when appropriate, using a test account and avoiding production data.
+
